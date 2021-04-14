@@ -9,26 +9,13 @@ class Bus:
         self.cpu.connectBus(self)
 
     def read(self, addr, isReadOnly = False):
-        '''
-        Read a byte from bus.
-            addr = 16 bits, isReadOnly = 1 bit
-        
-        return 8 bits.
-        '''
-
         if addr >= 0x0000 and addr <= 0xFFFF:
-            return self.ram[addr]
+            if isinstance(self.ram[addr], int):
+                return self.ram[addr]
 
-            print("read in addr", addr)
+            return int(self.ram[addr], 16)
 
     def write(self, addr, data):
-        '''
-        Write a byte in bus.
-            addr = 16 bits, data = 8 bits
-        '''
-
         if addr >= 0x0000 and addr <= 0xFFFF:
-            self.ram[addr] = data
-
-            print("write {} in addr {}".format(data, addr))
+            self.ram[addr] = int(data)
 
