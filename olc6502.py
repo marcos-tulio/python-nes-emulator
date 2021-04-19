@@ -297,8 +297,8 @@ class Olc6502():
     def reset(self):
         self.addr_abs = 0xFFFC
         
-        lo = self.bus.read(self.addr_abs + 0)
-        hi = self.bus.read(self.addr_abs + 1)
+        lo = self.bus.cpuRead(self.addr_abs + 0)
+        hi = self.bus.cpuRead(self.addr_abs + 1)
 
         self.pcount = (hi << 8) | lo
 
@@ -316,50 +316,50 @@ class Olc6502():
 
     def irq(self):
         if (self.getFlag(OLC6502_FLAG.I) == 0):
-            self.bus.write(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
+            self.bus.cpuWrite(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
             self.stack -= 1
 
-            self.bus.write(0x0100 + self.stack, self.pcount & 0x00FF)
+            self.bus.cpuWrite(0x0100 + self.stack, self.pcount & 0x00FF)
             self.stack -= 1
 
             self.setFlag(OLC6502_FLAG.B, 0)
             self.setFlag(OLC6502_FLAG.U, 1)
             self.setFlag(OLC6502_FLAG.I, 1)
 
-            self.bus.write(0x0100 + self.stack, self.status)
+            self.bus.cpuWrite(0x0100 + self.stack, self.status)
             self.stack -= 1
 
             self.addr_abs = 0xFFFE
-            lo = self.bus.read(self.addr_abs + 0)
-            hi = self.bus.read(self.addr_abs + 1)
+            lo = self.bus.cpuRead(self.addr_abs + 0)
+            hi = self.bus.cpuRead(self.addr_abs + 1)
             self.pcount = (hi << 8) | lo
 
             self.cycles = 7
 
     def nmi(self):
-        self.bus.write(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
+        self.bus.cpuWrite(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
         self.stack -= 1
 
-        self.bus.write(0x0100 + self.stack, self.pcount & 0x00FF)
+        self.bus.cpuWrite(0x0100 + self.stack, self.pcount & 0x00FF)
         self.stack -= 1
 
         self.setFlag(OLC6502_FLAG.B, 0)
         self.setFlag(OLC6502_FLAG.U, 1)
         self.setFlag(OLC6502_FLAG.I, 1)
 
-        self.bus.write(0x0100 + self.stack, self.status)
+        self.bus.cpuWrite(0x0100 + self.stack, self.status)
         self.stack -= 1
 
         self.addr_abs = 0xFFFA
-        lo = self.bus.read(self.addr_abs + 0)
-        hi = self.bus.read(self.addr_abs + 1)
+        lo = self.bus.cpuRead(self.addr_abs + 0)
+        hi = self.bus.cpuRead(self.addr_abs + 1)
         self.pcount = (hi << 8) | lo
 
         self.cycles = 8
 
     def clock(self):
         if self.cycles <= 0:
-            self.opcode = self.bus.read(self.pcount)
+            self.opcode = self.bus.cpuRead(self.pcount)
             self.setFlag(OLC6502_FLAG.U, True)            
             self.pcount += 1
             self.cycles = self.lookup[self.opcode].cycles
@@ -400,25 +400,25 @@ class Olc6502():
         return 0
 
     def ZP0(self):
-        self.addr_abs = self.bus.read(self.pcount)	
+        self.addr_abs = self.bus.cpuRead(self.pcount)	
         self.pcount += 1
         self.addr_abs &= 0x00FF
         return 0
 
     def ZPX(self):
-        self.addr_abs = (self.bus.read(self.pcount) + self.reg_x)
+        self.addr_abs = (self.bus.cpuRead(self.pcount) + self.reg_x)
         self.pcount += 1
         self.addr_abs &= 0x00FF
         return 0
 
     def ZPY(self):
-        self.addr_abs = (self.bus.read(self.pcount) + self.reg_y)
+        self.addr_abs = (self.bus.cpuRead(self.pcount) + self.reg_y)
         self.pcount += 1
         self.addr_abs &= 0x00FF
         return 0
 
     def REL(self):
-        self.addr_rel = self.bus.read(self.pcount)
+        self.addr_rel = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
         if self.addr_rel & 0x80:
@@ -427,10 +427,10 @@ class Olc6502():
         return 0
 
     def ABS(self):
-        lo = self.bus.read(self.pcount)
+        lo = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
-        hi = self.bus.read(self.pcount)
+        hi = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
         self.addr_abs = (hi << 8) | lo
@@ -438,10 +438,10 @@ class Olc6502():
         return 0
 
     def ABX(self):
-        lo = self.bus.read(self.pcount)
+        lo = self.bus.cpuRead(self.pcount)
         self.pcount += 1
         
-        hi = self.bus.read(self.pcount)
+        hi = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
         self.addr_abs = (hi << 8) | lo
@@ -453,10 +453,10 @@ class Olc6502():
         return 0
 
     def ABY(self):
-        lo = self.bus.read(self.pcount)
+        lo = self.bus.cpuRead(self.pcount)
         self.pcount += 1
         
-        hi = self.bus.read(self.pcount)
+        hi = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
         self.addr_abs = (hi << 8) | lo
@@ -468,38 +468,38 @@ class Olc6502():
         return 0
 
     def IND(self):
-        ptr_lo = self.bus.read(self.pcount)
+        ptr_lo = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
-        ptr_hi = self.bus.read(self.pcount)
+        ptr_hi = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
         ptr = (ptr_hi << 8) | ptr_lo
 
         if (ptr_lo == 0x00FF): # Simulate page boundary hardware bug
-            self.addr_abs = (self.bus.read(ptr & 0xFF00) << 8) | self.bus.read(ptr + 0)
+            self.addr_abs = (self.bus.cpuRead(ptr & 0xFF00) << 8) | self.bus.cpuRead(ptr + 0)
         else:
-            self.addr_abs = (self.bus.read(ptr + 1) << 8) | self.bus.read(ptr + 0)
+            self.addr_abs = (self.bus.cpuRead(ptr + 1) << 8) | self.bus.cpuRead(ptr + 0)
 
         return 0
 
     def IZX(self):
-        t = self.bus.read(self.pcount)
+        t = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
-        lo = self.bus.read((t + self.reg_x) & 0x00FF)
-        hi = self.bus.read((t + self.reg_x + 1) & 0x00FF)
+        lo = self.bus.cpuRead((t + self.reg_x) & 0x00FF)
+        hi = self.bus.cpuRead((t + self.reg_x + 1) & 0x00FF)
 
         self.addr_abs = (hi << 8) | lo
 
         return 0
 
     def IZY(self):
-        t = self.bus.read(self.pcount)
+        t = self.bus.cpuRead(self.pcount)
         self.pcount += 1
 
-        lo = self.bus.read(t & 0x00FF)
-        hi = self.bus.read((t + 1) & 0x00FF)
+        lo = self.bus.cpuRead(t & 0x00FF)
+        hi = self.bus.cpuRead((t + 1) & 0x00FF)
 
         self.addr_abs = (hi << 8) | lo
         self.addr_abs += self.reg_y
@@ -511,7 +511,7 @@ class Olc6502():
 
     def fetch(self):
         if not (self.lookup[self.opcode].addr_mode == self.IMP):
-            self.fetched = self.bus.read(self.addr_abs)
+            self.fetched = self.bus.cpuRead(self.addr_abs)
 
         return self.fetched
 
@@ -568,10 +568,10 @@ class Olc6502():
         self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x00)
         self.setFlag(OLC6502_FLAG.N, temp & 0x80)
 
-        if (self.lookup[self.opcode].addrmode == self.IMP):
+        if (self.lookup[self.opcode].addr_mode == self.IMP):
             self.acc = temp & 0x00FF
         else:
-            self.bus.write(self.addr_abs, temp & 0x00FF)
+            self.bus.cpuWrite(self.addr_abs, temp & 0x00FF)
 
         return 0
     
@@ -665,19 +665,19 @@ class Olc6502():
         self.pcount += 1        
         self.setFlag(OLC6502_FLAG.I, 1)
 
-        self.bus.write(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
+        self.bus.cpuWrite(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
         self.stack -= 1
 
-        self.bus.write(0x0100 + self.stack, self.pcount & 0x00FF)
+        self.bus.cpuWrite(0x0100 + self.stack, self.pcount & 0x00FF)
         self.stack -= 1
 
         self.setFlag(OLC6502_FLAG.B, 1)
-        self.bus.write(0x0100 + self.stack, self.status)
+        self.bus.cpuWrite(0x0100 + self.stack, self.status)
 
         self.stack -= 1
         self.setFlag(OLC6502_FLAG.B, 0)
 
-        self.pcount = self.bus.read(0xFFFE) | (self.bus.read(0xFFFF) << 8)
+        self.pcount = self.bus.cpuRead(0xFFFE) | (self.bus.cpuRead(0xFFFF) << 8)
         return 0
 
     def BVC(self):
@@ -752,7 +752,7 @@ class Olc6502():
         self.fetch()
         temp = self.fetched - 1
 
-        self.bus.write(self.addr_abs, temp & 0x00FF)
+        self.bus.cpuWrite(self.addr_abs, temp & 0x00FF)
 
         self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
         self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
@@ -781,7 +781,7 @@ class Olc6502():
         self.fetch()
         temp = self.fetched + 1
 
-        self.bus.write(self.addr_abs, temp & 0x00FF)
+        self.bus.cpuWrite(self.addr_abs, temp & 0x00FF)
 
         self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
         self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
@@ -806,10 +806,10 @@ class Olc6502():
     def JSR(self):    
         self.pcount -= 1
 
-        self.bus.write(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
+        self.bus.cpuWrite(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
         self.stack -= 1
 
-        self.bus.write(0x0100 + self.stack, self.pcount & 0x00FF)
+        self.bus.cpuWrite(0x0100 + self.stack, self.pcount & 0x00FF)
         self.stack -= 1
 
         self.pcount = self.addr_abs
@@ -849,10 +849,10 @@ class Olc6502():
         self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
         self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
 
-        if (self.lookup[self.opcode].addrmode == self.IMP):
+        if (self.lookup[self.opcode].addr_mode == self.IMP):
             self.acc = temp & 0x00FF
         else:
-            self.bus.write(self.addr_abs, temp & 0x00FF)
+            self.bus.cpuWrite(self.addr_abs, temp & 0x00FF)
         return 0
 
     def NOP(self):
@@ -872,12 +872,12 @@ class Olc6502():
         return 1
 
     def PHA(self):    
-        self.bus.write(0x0100 + self.stack, self.acc)
+        self.bus.cpuWrite(0x0100 + self.stack, self.acc)
         self.stack -= 1
         return 0
 
     def PHP(self):    
-        self.bus.write(
+        self.bus.cpuWrite(
             0x0100 + self.stack, self.status | OLC6502_FLAG.B | OLC6502_FLAG.U)
         
         self.setFlag(OLC6502_FLAG.B, 0)
@@ -897,7 +897,7 @@ class Olc6502():
     
     def PLP(self):    
         self.stack += 1
-        self.status = self.bus.read(0x0100 + self.stack)
+        self.status = self.bus.cpuRead(0x0100 + self.stack)
         self.setFlag(OLC6502_FLAG.U, 1)
         return 0
     
@@ -909,10 +909,10 @@ class Olc6502():
         self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
         self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
 
-        if (self.lookup[self.opcode].addrmode == self.IMP):
+        if (self.lookup[self.opcode].addr_mode == self.IMP):
             self.acc = temp & 0x00FF
         else:
-            self.bus.write(self.addr_abs, temp & 0x00FF)
+            self.bus.cpuWrite(self.addr_abs, temp & 0x00FF)
         return 0
     
     def ROR(self):    
@@ -924,31 +924,31 @@ class Olc6502():
         self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x00)
         self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
 
-        if (self.lookup[self.opcode].addrmode == self.IMP):
+        if (self.lookup[self.opcode].addr_mode == self.IMP):
             self.acc = temp & 0x00FF
         else:
-            self.bus.write(self.addr_abs, temp & 0x00FF)
+            self.bus.cpuWrite(self.addr_abs, temp & 0x00FF)
         return 0
     
     def RTI(self):
         self.stack += 1
-        self.status = self.bus.read(0x0100 + self.stack)
+        self.status = self.bus.cpuRead(0x0100 + self.stack)
         self.status &= ~OLC6502_FLAG.B
         self.status &= ~OLC6502_FLAG.U
 
         self.stack += 1
-        self.pcount = self.bus.read(0x0100 + self.stack)
+        self.pcount = self.bus.cpuRead(0x0100 + self.stack)
 
         self.stack += 1
-        self.pcount |= self.bus.read(0x0100 + self.stack) << 8
+        self.pcount |= self.bus.cpuRead(0x0100 + self.stack) << 8
         return 0
 
     def RTS(self):
         self.stack += 1
-        self.pcount = self.bus.read(0x0100 + self.stack)
+        self.pcount = self.bus.cpuRead(0x0100 + self.stack)
 
         self.stack += 1
-        self.pcount |= self.bus.read(0x0100 + self.stack) << 8
+        self.pcount |= self.bus.cpuRead(0x0100 + self.stack) << 8
 
         self.pcount += 1
         return 0
@@ -966,15 +966,15 @@ class Olc6502():
         return 0
 
     def STA(self):
-        self.bus.write(self.addr_abs, self.acc)
+        self.bus.cpuWrite(self.addr_abs, self.acc)
         return 0
 
     def STX(self):
-        self.bus.write(self.addr_abs, self.reg_x)
+        self.bus.cpuWrite(self.addr_abs, self.reg_x)
         return 0
 
     def STY(self):
-        self.bus.write(self.addr_abs, self.reg_y)
+        self.bus.cpuWrite(self.addr_abs, self.reg_y)
         return 0
 
     def TAX(self):
@@ -1044,7 +1044,7 @@ class Olc6502():
 
             sInst = "${:04x}: ".format(addr)
             
-            opcode = self.bus.read(addr, True)
+            opcode = self.bus.cpuRead(addr, True)
             addr += 1
 
             sInst += str(self.lookup[opcode].operate.__name__) + " "
@@ -1053,74 +1053,74 @@ class Olc6502():
                 sInst += " (IMP)"
 
             elif (self.lookup[opcode].addr_mode == self.IMM):
-                value = self.bus.read(addr, True) 
+                value = self.bus.cpuRead(addr, True) 
                 addr += 1
                 sInst += "#${:02x} (IMM)".format(value)
 
             elif (self.lookup[opcode].addr_mode == self.ZP0):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
                 hi = 0x00												
                 sInst += "${:02x} (ZP0)".format(lo)
 
             elif (self.lookup[opcode].addr_mode == self.ZPX):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
                 hi = 0x00	
                 sInst += "${:02x}, X (ZPX)".format(lo)
 
             elif (self.lookup[opcode].addr_mode == self.ZPY):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
                 hi = 0x00
                 sInst += "${:02x}, Y (ZPY)".format(lo)
 
             elif (self.lookup[opcode].addr_mode == self.IZX):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
                 hi = 0x00			
                 sInst += "${:02x}, X (IZX)".format(lo)
 
             elif (self.lookup[opcode].addr_mode == self.IZY):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
                 hi = 0x00
                 sInst += "${:02x}, Y (IZY)".format(lo)
 
             elif (self.lookup[opcode].addr_mode == self.ABS):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
 
-                hi = self.bus.read(addr, True) 
+                hi = self.bus.cpuRead(addr, True) 
                 addr += 1
                 sInst += "${:04x} (ABS)".format((hi << 8) | lo)
 
             elif (self.lookup[opcode].addr_mode == self.ABX):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
 
-                hi = self.bus.read(addr, True) 
+                hi = self.bus.cpuRead(addr, True) 
                 addr += 1
                 sInst += "${:04x}, X (ABX)".format((hi << 8) | lo)
 
             elif (self.lookup[opcode].addr_mode == self.ABY):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
 
-                hi = self.bus.read(addr, True) 
+                hi = self.bus.cpuRead(addr, True) 
                 addr += 1
                 sInst += "${:04x}, Y (ABY)".format((hi << 8) | lo)
 
             elif (self.lookup[opcode].addr_mode == self.IND):
-                lo = self.bus.read(addr, True) 
+                lo = self.bus.cpuRead(addr, True) 
                 addr += 1
 
-                hi = self.bus.read(addr, True) 
+                hi = self.bus.cpuRead(addr, True) 
                 addr += 1
                 sInst += "(${:04x}) (IND)".format((hi << 8) | lo)
 
             elif (self.lookup[opcode].addr_mode == self.REL):
-                value = self.bus.read(addr, True) 
+                value = self.bus.cpuRead(addr, True) 
                 addr += 1
                 sInst += "${:02x} [${:04x}] (REL)".format(value, (addr + value))
 

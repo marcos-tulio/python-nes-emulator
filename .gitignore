@@ -1,0 +1,6 @@
+*.NES
+*.nes
+*.pyc
+rom_tester.py
+__pycache__
+__pycache__/*

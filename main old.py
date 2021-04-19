@@ -3,10 +3,8 @@ from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import *
 import bus
 import sys
-import cartridge as cart
 
 nes = bus.Bus()
-cartridge = None
 mapAsm = []
 
 class MainFrame(QWidget):
@@ -202,13 +200,24 @@ def frame():
 #######################
 #       MAIN
 #######################
-cartridge = cart.Cartridge("Super_mario_brothers.nes")
+program = "A2 0A 8E 00 00 A2 03 8E 01 00 AC 00 00 A9 00 18 6D 01 00 88 D0 FA 8D 02 00 EA EA EA"
+offset  = 0x8000
 
-nes.insertCartridge(cartridge)
+for x in program.split():
+    nes.cpu_ram[offset] = hex(int(x, 16))
+    offset += 1
+
+# Set Reset Vector
+nes.cpu_ram[0xFFFC] = 0x00
+nes.cpu_ram[0xFFFD] = 0x80
 
 mapAsm = nes.cpu.disassemble(0x0000, 0xFFFF)
 
-nes.reset()
+nes.cpu.reset()
+
+#print(mapAsm)
 
 # Init frame
 frame()
+
+#print (nes.cpu.lookup[nes.cpu.opcode].addr_mode == nes.cpu.IMP)
