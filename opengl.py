@@ -2,6 +2,15 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
+from OpenGL.GL import *
+from OpenGL.GLUT import *
+from OpenGL.GLU import *
+
+from datetime import datetime, timedelta
+
+import time
+import threading
+
 import bus
 import sys
 import cartridge as cart
@@ -19,7 +28,9 @@ class MainFrame(QWidget):
     def do_work(self):
         QThread.sleep(1)
 
-        while True:            
+        #before = datetime.now()
+        while True:   
+
             nes.clock()
             while not nes.ppu.frame_complete: nes.clock()
 
@@ -28,8 +39,15 @@ class MainFrame(QWidget):
 
             self.refreshCPU()
             self.refreshCode()
-            self.canvas.refresh()
             self.repaint()
+
+            #time.sleep(1)
+
+            #now = datetime.now()
+
+            #if (now - before) > timedelta(milliseconds = 1000):
+            #    before = now
+            #    self.canvas.refresh()
 
             #QThread.sleep(.1)
 
@@ -75,12 +93,17 @@ class MainFrame(QWidget):
             while not nes.cpu.complete(): nes.clock()
 
         elif event.key() == 32: # Space
-            self.thread.start()
+            #self.thread.start()
+            self.thread_canvas.start()
+            self.thread_code.start()
+
+            self.thread_canvas.join()
+            self.thread_code.join()
             #self.is_emulation_run = (not self.is_emulation_run)
 
         self.refreshCPU()
         self.refreshCode()
-        self.canvas.refresh()
+        #self.canvas.refresh()
 
     ############################################################################################
     #                                   Code Debugger
@@ -229,71 +252,100 @@ class MainFrame(QWidget):
     ############################################################################################
     #                                        Sprite
     ############################################################################################
-    class Canvas(QWidget):
-        colors = {}
-        pen = None
-
-        def refresh(self):
-            self._x = 0
-            self._y = 0
-            self._sprite = nes.ppu.spr_screen
-            self._flip   = g.Sprite.FLIP.NONE
-            self._scale = 3
-            self.update()
-
-        def paintEvent(self, event):
-            fxs = fx = 0
-            fxm = 1
-
-            fys = fy = 0
-            fym = 1
-            
-            if self._flip & g.Sprite.FLIP.HORIZ:
-                fxs = self._sprite.width - 1
-                fxm = -1
-
-            if self._flip & g.Sprite.FLIP.VERT:
-                fys = self._sprite.height - 1
-                fym = -1
-
-            painter = QPainter()
-            painter.begin(self)
-
-            if not self.pen:
-                self.pen = QPen()
-                self.pen.setWidth(self._scale)
-
-            fx = fxs
-            for i in range(self._sprite.width):                
-                fy = fys
-                
-                for j in range(self._sprite.height):
-                    pixel = self._sprite.getPixel(fx, fy)  
-                    color = "{}_{}_{}".format(pixel.r, pixel.g, pixel.b)
-
-                    if not (color in self.colors):
-                        self.colors[color] = QColor(pixel.r, pixel.g, pixel.b)
-                        print("Nova cor adicionada: ", color)
-                    
-                    #color = QColor(pixel.r, pixel.g, pixel.b)
-                    
-                    self.pen.setColor(self.colors[color])
-
-                    #painter.setPen(QPen(self.colors[color], self._scale))
-                    painter.setPen(self.pen)
-                    painter.drawPoint( self._scale * (self._x + i), self._scale * (self._y + j))
-
-                    fy += fym
-                fx += fxm
-
-            painter.end()
-            return
-
     def initPanelSprite(self, width, height):
-        self.canvas = self.Canvas()
-        self.canvas.setMinimumWidth(width)
-        self.canvas.setMinimumHeight(height)
-        return self.canvas
+        self.canvas = Canvas()
+
+class Canvas():
+    pixel_size = 2
+    sprite = nes.ppu.spr_screen
+
+    ############################################################################################
+    #                                       Frame
+    ############################################################################################
+    def __init__(self): pass
+
+    def init_canvas(self):
+        glutInit()
+        glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA)
+        glutInitWindowSize(
+            self.sprite.width * self.pixel_size, self.sprite.height * self.pixel_size)
+        glutCreateWindow("Teste")
+        glutDisplayFunc(self.init_canvas)
+
+        glClearColor(1, 1, 1, 1)
+        glClear(GL_COLOR_BUFFER_BIT)
+
+    def main_loop(self):
+        self.init_canvas()        
+
+        while True:
+            self.refresh()
+            time.sleep(.03)
+
+    ############################################################################################
+    #                                       Sprite
+    ############################################################################################
+    def refresh(self):
+        self.draw_sprite(nes.ppu.spr_screen)
+
+    def reorder_array(self, array, split = 0):
+        temp = [None] * len(array)
+        
+        items_in_array = 0
+        break_index = 1
+
+        for item in array:
+            if items_in_array == split:
+                break_index += 1
+                items_in_array = 0
+
+            temp[len(temp) - (split * break_index) + items_in_array] = item
+            items_in_array += 1
+
+        return temp
+
+    def draw_sprite(self, sprite, flip = g.Sprite.FLIP.NONE):
+        gluOrtho2D(0, sprite.width, sprite.height, 0)
+
+        fxs = fx = fys = fy = 0
+        fxm = fym = 1
+
+        if flip & g.Sprite.FLIP.HORIZ:
+            fxs = sprite.width - 1
+            fxm = -1
+
+        if flip & g.Sprite.FLIP.VERT:
+            fys = sprite.height - 1
+            fym = -1
+
+        data = [0, 0, 0, 0] * (sprite.width * sprite.height)
+        cont = 0
+        
+        # Fill buffer
+        fx = fxs
+        for i in range(sprite.width):
+            #cont = len(data) - ((sprite.height * 3) * (i + 1))
+            
+            fy = fys
+            for j in range(sprite.height):                
+                pixel = sprite.getPixel(fx, fy)
+
+                data[cont]     = pixel.r
+                data[cont + 1] = pixel.g
+                data[cont + 2] = pixel.b
+                data[cont + 3] = pixel.a
+
+                cont += 4
+
+                fy += fym
+            fx += fxm
+
+        # Reorder Pixels
+        data = self.reorder_array(data, sprite.width * 4) # x4 = RGBA
+
+        glPixelZoom(self.pixel_size, self.pixel_size)
+        glDrawPixels(sprite.width, sprite.height, GL_RGBA, GL_UNSIGNED_BYTE, data)
+        glutSwapBuffers() 
 
 def frame():    
     app  = QApplication(sys.argv)
@@ -303,17 +355,24 @@ def frame():
     window.setFont(QFont("monospace", 10))
     
     vbox = QGridLayout()
-    vbox.addWidget(window.initPanelSprite(500, 500), 0, 0, 2, 1)
+    #vbox.addWidget(window.initPanelSprite(500, 500), 0, 0, 2, 1)
+    
     vbox.addWidget(window.initPanelCPU(), 0, 1, 1, 1)
     vbox.addWidget(window.initCode(15), 1, 1)
 
     #window.refreshRAM()
     window.refreshCPU()
     window.refreshCode()
-    window.canvas.refresh()
+    #window.canvas.refresh()
 
-    window.thread = QThread()
-    window.thread.started.connect(window.do_work)
+    #window.thread = QThread()
+    #window.thread.started.connect(window.do_work)
+
+    #window.initPanelSprite(500, 500)
+    window.canvas = Canvas()
+
+    window.thread_code = threading.Thread(target = window.do_work)
+    window.thread_canvas = threading.Thread(target = window.canvas.main_loop)
 
     window.setLayout(vbox)
     window.show()

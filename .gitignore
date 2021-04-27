@@ -2,5 +2,7 @@
 *.nes
 *.pyc
 rom_tester.py
+test.py
+main*.py
 __pycache__
 __pycache__/*

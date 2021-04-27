@@ -1,5 +1,5 @@
 from enum import IntEnum
-class OLC6502_FLAG(IntEnum):
+class CPU6502_FLAG(IntEnum):
     C = (1 << 0)
     Z = (1 << 1)
     I = (1 << 2)
@@ -15,7 +15,7 @@ class OP():
         self.addr_mode = addr_mode
         self.cycles = cycles
 
-class Olc6502():
+class CPU6502():
     def __init__(self):
         self.bus = None
 
@@ -306,7 +306,7 @@ class Olc6502():
         self.reg_x = 0
         self.reg_y = 0
         self.stack = 0xFD
-        self.status = 0x00 | OLC6502_FLAG.U
+        self.status = 0x00 | CPU6502_FLAG.U
 
         self.addr_rel = 0x0000
         self.addr_abs = 0x0000
@@ -315,16 +315,16 @@ class Olc6502():
         self.cycles = 8
 
     def irq(self):
-        if (self.getFlag(OLC6502_FLAG.I) == 0):
+        if (self.getFlag(CPU6502_FLAG.I) == 0):
             self.bus.cpuWrite(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
             self.stack -= 1
 
             self.bus.cpuWrite(0x0100 + self.stack, self.pcount & 0x00FF)
             self.stack -= 1
 
-            self.setFlag(OLC6502_FLAG.B, 0)
-            self.setFlag(OLC6502_FLAG.U, 1)
-            self.setFlag(OLC6502_FLAG.I, 1)
+            self.setFlag(CPU6502_FLAG.B, 0)
+            self.setFlag(CPU6502_FLAG.U, 1)
+            self.setFlag(CPU6502_FLAG.I, 1)
 
             self.bus.cpuWrite(0x0100 + self.stack, self.status)
             self.stack -= 1
@@ -343,9 +343,9 @@ class Olc6502():
         self.bus.cpuWrite(0x0100 + self.stack, self.pcount & 0x00FF)
         self.stack -= 1
 
-        self.setFlag(OLC6502_FLAG.B, 0)
-        self.setFlag(OLC6502_FLAG.U, 1)
-        self.setFlag(OLC6502_FLAG.I, 1)
+        self.setFlag(CPU6502_FLAG.B, 0)
+        self.setFlag(CPU6502_FLAG.U, 1)
+        self.setFlag(CPU6502_FLAG.I, 1)
 
         self.bus.cpuWrite(0x0100 + self.stack, self.status)
         self.stack -= 1
@@ -360,7 +360,7 @@ class Olc6502():
     def clock(self):
         if self.cycles <= 0:
             self.opcode = self.bus.cpuRead(self.pcount)
-            self.setFlag(OLC6502_FLAG.U, True)            
+            self.setFlag(CPU6502_FLAG.U, True)            
             self.pcount += 1
             self.cycles = self.lookup[self.opcode].cycles
 
@@ -368,7 +368,7 @@ class Olc6502():
             additional_cycle2 = (self.lookup[self.opcode].operate)()
             
             self.cycles += (additional_cycle1 & additional_cycle2)
-            self.setFlag(OLC6502_FLAG.U, True)
+            self.setFlag(CPU6502_FLAG.U, True)
 
         self.clock_count += 1
         self.cycles -= 1
@@ -521,15 +521,15 @@ class Olc6502():
     def ADC(self):
         self.fetch()
         
-        temp = self.acc + self.fetched + self.getFlag(OLC6502_FLAG.C)
+        temp = self.acc + self.fetched + self.getFlag(CPU6502_FLAG.C)
         
-        self.setFlag(OLC6502_FLAG.C, temp > 255)
+        self.setFlag(CPU6502_FLAG.C, temp > 255)
         
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0)
         
-        self.setFlag(OLC6502_FLAG.V, (~(self.acc ^ self.fetched) & (self.acc ^ temp)) & 0x0080)
+        self.setFlag(CPU6502_FLAG.V, (~(self.acc ^ self.fetched) & (self.acc ^ temp)) & 0x0080)
         
-        self.setFlag(OLC6502_FLAG.N, temp & 0x80)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x80)
         
         self.acc = temp & 0x00FF
         
@@ -540,12 +540,12 @@ class Olc6502():
 
         value = self.fetched ^ 0x00FF
 
-        temp = self.acc + value + self.getFlag(OLC6502_FLAG.C)
+        temp = self.acc + value + self.getFlag(CPU6502_FLAG.C)
 
-        self.setFlag(OLC6502_FLAG.C, temp & 0xFF00)
-        self.setFlag(OLC6502_FLAG.Z, ((temp & 0x00FF) == 0))
-        self.setFlag(OLC6502_FLAG.V, (temp ^ self.acc) & (temp ^ value) & 0x0080)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.C, temp & 0xFF00)
+        self.setFlag(CPU6502_FLAG.Z, ((temp & 0x00FF) == 0))
+        self.setFlag(CPU6502_FLAG.V, (temp ^ self.acc) & (temp ^ value) & 0x0080)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
 
         self.acc = temp & 0x00FF
 
@@ -555,8 +555,8 @@ class Olc6502():
         self.fetch()
         self.acc = self.acc & self.fetched
 
-        self.setFlag(OLC6502_FLAG.Z, self.acc == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.acc & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.acc == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.acc & 0x80)
 
         return 1
     
@@ -564,9 +564,9 @@ class Olc6502():
         self.fetch()
         temp = self.fetched << 1
 
-        self.setFlag(OLC6502_FLAG.C, (temp & 0xFF00) > 0)
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x00)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x80)
+        self.setFlag(CPU6502_FLAG.C, (temp & 0xFF00) > 0)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x00)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x80)
 
         if (self.lookup[self.opcode].addr_mode == self.IMP):
             self.acc = temp & 0x00FF
@@ -576,7 +576,7 @@ class Olc6502():
         return 0
     
     def BCC(self):    
-        if (self.getFlag(OLC6502_FLAG.C) == 0):
+        if (self.getFlag(CPU6502_FLAG.C) == 0):
         
             self.cycles += 1
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
@@ -589,7 +589,7 @@ class Olc6502():
         return 0
     
     def BCS(self):    
-        if (self.getFlag(OLC6502_FLAG.C) == 1):
+        if (self.getFlag(CPU6502_FLAG.C) == 1):
         
             self.cycles += 1
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
@@ -602,7 +602,7 @@ class Olc6502():
         return 0
     
     def BEQ(self):    
-        if (self.getFlag(OLC6502_FLAG.Z) == 1):
+        if (self.getFlag(CPU6502_FLAG.Z) == 1):
         
             self.cycles += 1
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
@@ -618,14 +618,14 @@ class Olc6502():
         self.fetch()
         temp = self.acc & self.fetched
 
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.fetched & (1 << 7))
-        self.setFlag(OLC6502_FLAG.V, self.fetched & (1 << 6))
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.fetched & (1 << 7))
+        self.setFlag(CPU6502_FLAG.V, self.fetched & (1 << 6))
 
         return 0
     
     def BMI(self):    
-        if (self.getFlag(OLC6502_FLAG.N) == 1):
+        if (self.getFlag(CPU6502_FLAG.N) == 1):
         
             self.cycles += 1
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
@@ -638,7 +638,7 @@ class Olc6502():
         return 0
     
     def BNE(self):    
-        if self.getFlag(OLC6502_FLAG.Z) == 0:        
+        if self.getFlag(CPU6502_FLAG.Z) == 0:        
             self.cycles += 1
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
@@ -650,7 +650,7 @@ class Olc6502():
         return 0
     
     def BPL(self):    
-        if (self.getFlag(OLC6502_FLAG.N) == 0):        
+        if (self.getFlag(CPU6502_FLAG.N) == 0):        
             self.cycles += 1
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
@@ -663,7 +663,7 @@ class Olc6502():
     
     def BRK(self):    
         self.pcount += 1        
-        self.setFlag(OLC6502_FLAG.I, 1)
+        self.setFlag(CPU6502_FLAG.I, 1)
 
         self.bus.cpuWrite(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
         self.stack -= 1
@@ -671,17 +671,17 @@ class Olc6502():
         self.bus.cpuWrite(0x0100 + self.stack, self.pcount & 0x00FF)
         self.stack -= 1
 
-        self.setFlag(OLC6502_FLAG.B, 1)
+        self.setFlag(CPU6502_FLAG.B, 1)
         self.bus.cpuWrite(0x0100 + self.stack, self.status)
 
         self.stack -= 1
-        self.setFlag(OLC6502_FLAG.B, 0)
+        self.setFlag(CPU6502_FLAG.B, 0)
 
         self.pcount = self.bus.cpuRead(0xFFFE) | (self.bus.cpuRead(0xFFFF) << 8)
         return 0
 
     def BVC(self):
-        if (self.getFlag(OLC6502_FLAG.V) == 0):
+        if (self.getFlag(CPU6502_FLAG.V) == 0):
             self.cycles += 1
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
@@ -692,7 +692,7 @@ class Olc6502():
         return 0
 
     def BVS(self):
-        if (self.getFlag(OLC6502_FLAG.V) == 1):
+        if (self.getFlag(CPU6502_FLAG.V) == 1):
             self.cycles += 1
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
@@ -703,28 +703,28 @@ class Olc6502():
         return 0
 
     def CLC(self):
-        self.setFlag(OLC6502_FLAG.C, False)
+        self.setFlag(CPU6502_FLAG.C, False)
         return 0
     
     def CLD(self):    
-        self.setFlag(OLC6502_FLAG.D, False)
+        self.setFlag(CPU6502_FLAG.D, False)
         return 0
     
     def CLI(self):    
-        self.setFlag(OLC6502_FLAG.I, False)
+        self.setFlag(CPU6502_FLAG.I, False)
         return 0
     
     def CLV(self):    
-        self.setFlag(OLC6502_FLAG.V, False)
+        self.setFlag(CPU6502_FLAG.V, False)
         return 0
     
     def CMP(self):    
         self.fetch()
         temp = self.acc - self.fetched
 
-        self.setFlag(OLC6502_FLAG.C, self.acc >= self.fetched)
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.C, self.acc >= self.fetched)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
 
         return 1
     
@@ -732,9 +732,9 @@ class Olc6502():
         self.fetch()
         temp = self.reg_x - self.fetched
 
-        self.setFlag(OLC6502_FLAG.C, self.reg_x >= self.fetched)
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.C, self.reg_x >= self.fetched)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
 
         return 0
 
@@ -742,9 +742,9 @@ class Olc6502():
         self.fetch()
         temp = self.reg_y - self.fetched
 
-        self.setFlag(OLC6502_FLAG.C, self.reg_y >= self.fetched)
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.C, self.reg_y >= self.fetched)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
 
         return 0
 
@@ -754,27 +754,27 @@ class Olc6502():
 
         self.bus.cpuWrite(self.addr_abs, temp & 0x00FF)
 
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
         return 0
     
     def DEX(self):    
         self.reg_x -= 1
-        self.setFlag(OLC6502_FLAG.Z, self.reg_x == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_x & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_x == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_x & 0x80)
         return 0
     
     def DEY(self):
         self.reg_y -= 1
-        self.setFlag(OLC6502_FLAG.Z, self.reg_y == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_y & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_y == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_y & 0x80)
         return 0
     
     def EOR(self):    
         self.fetch()
         self.acc = self.acc ^ self.fetched	
-        self.setFlag(OLC6502_FLAG.Z, self.acc == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.acc & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.acc == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.acc & 0x80)
         return 1
     
     def INC(self):    
@@ -783,20 +783,20 @@ class Olc6502():
 
         self.bus.cpuWrite(self.addr_abs, temp & 0x00FF)
 
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
         return 0
     
     def INX(self):    
         self.reg_x += 1
-        self.setFlag(OLC6502_FLAG.Z, self.reg_x == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_x & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_x == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_x & 0x80)
         return 0
     
     def INY(self):    
         self.reg_y += 1
-        self.setFlag(OLC6502_FLAG.Z, self.reg_y == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_y & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_y == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_y & 0x80)
         return 0
     
     def JMP(self):    
@@ -819,8 +819,8 @@ class Olc6502():
         self.fetch()
         self.acc = self.fetched
 
-        self.setFlag(OLC6502_FLAG.Z, self.acc == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.acc & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.acc == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.acc & 0x80)
 
         return 1
 
@@ -828,26 +828,26 @@ class Olc6502():
         self.fetch()
         self.reg_x = self.fetched
 
-        self.setFlag(OLC6502_FLAG.Z, self.reg_x == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_x & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_x == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_x & 0x80)
         return 1
     
     def LDY(self):    
         self.fetch()
         self.reg_y = self.fetched
 
-        self.setFlag(OLC6502_FLAG.Z, self.reg_y == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_y & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_y == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_y & 0x80)
         return 1
     
     def LSR(self):    
         self.fetch()
-        self.setFlag(OLC6502_FLAG.C, self.fetched & 0x0001)
+        self.setFlag(CPU6502_FLAG.C, self.fetched & 0x0001)
 
         temp = self.fetched >> 1
 
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
 
         if (self.lookup[self.opcode].addr_mode == self.IMP):
             self.acc = temp & 0x00FF
@@ -866,8 +866,8 @@ class Olc6502():
         self.fetch()
         self.acc = self.acc | self.fetched
 
-        self.setFlag(OLC6502_FLAG.Z, self.acc == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.acc & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.acc == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.acc & 0x80)
 
         return 1
 
@@ -878,10 +878,10 @@ class Olc6502():
 
     def PHP(self):    
         self.bus.cpuWrite(
-            0x0100 + self.stack, self.status | OLC6502_FLAG.B | OLC6502_FLAG.U)
+            0x0100 + self.stack, self.status | CPU6502_FLAG.B | CPU6502_FLAG.U)
         
-        self.setFlag(OLC6502_FLAG.B, 0)
-        self.setFlag(OLC6502_FLAG.U, 0)
+        self.setFlag(CPU6502_FLAG.B, 0)
+        self.setFlag(CPU6502_FLAG.U, 0)
         
         self.stack -= 1
         return 0
@@ -891,23 +891,23 @@ class Olc6502():
 
         self.acc = read(0x0100 + self.stack)
 
-        self.setFlag(OLC6502_FLAG.Z, self.acc == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.acc & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.acc == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.acc & 0x80)
         return 0
     
     def PLP(self):    
         self.stack += 1
         self.status = self.bus.cpuRead(0x0100 + self.stack)
-        self.setFlag(OLC6502_FLAG.U, 1)
+        self.setFlag(CPU6502_FLAG.U, 1)
         return 0
     
     def ROL(self):    
         self.fetch()
-        temp = (self.fetched << 1) | self.getFlag(OLC6502_FLAG.C)
+        temp = (self.fetched << 1) | self.getFlag(CPU6502_FLAG.C)
 
-        self.setFlag(OLC6502_FLAG.C, temp & 0xFF00)
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.C, temp & 0xFF00)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x0000)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
 
         if (self.lookup[self.opcode].addr_mode == self.IMP):
             self.acc = temp & 0x00FF
@@ -918,11 +918,11 @@ class Olc6502():
     def ROR(self):    
         self.fetch()
 
-        temp = (self.getFlag(OLC6502_FLAG.C) << 7) | (self.fetched >> 1)
+        temp = (self.getFlag(CPU6502_FLAG.C) << 7) | (self.fetched >> 1)
 
-        self.setFlag(OLC6502_FLAG.C, self.fetched & 0x01)
-        self.setFlag(OLC6502_FLAG.Z, (temp & 0x00FF) == 0x00)
-        self.setFlag(OLC6502_FLAG.N, temp & 0x0080)
+        self.setFlag(CPU6502_FLAG.C, self.fetched & 0x01)
+        self.setFlag(CPU6502_FLAG.Z, (temp & 0x00FF) == 0x00)
+        self.setFlag(CPU6502_FLAG.N, temp & 0x0080)
 
         if (self.lookup[self.opcode].addr_mode == self.IMP):
             self.acc = temp & 0x00FF
@@ -933,8 +933,8 @@ class Olc6502():
     def RTI(self):
         self.stack += 1
         self.status = self.bus.cpuRead(0x0100 + self.stack)
-        self.status &= ~OLC6502_FLAG.B
-        self.status &= ~OLC6502_FLAG.U
+        self.status &= ~CPU6502_FLAG.B
+        self.status &= ~CPU6502_FLAG.U
 
         self.stack += 1
         self.pcount = self.bus.cpuRead(0x0100 + self.stack)
@@ -954,15 +954,15 @@ class Olc6502():
         return 0
 
     def SEC(self):
-        self.setFlag(OLC6502_FLAG.C, True)
+        self.setFlag(CPU6502_FLAG.C, True)
         return 0
 
     def SED(self):
-        self.setFlag(OLC6502_FLAG.D, True)
+        self.setFlag(CPU6502_FLAG.D, True)
         return 0
 
     def SEI(self):
-        self.setFlag(OLC6502_FLAG.I, True)
+        self.setFlag(CPU6502_FLAG.I, True)
         return 0
 
     def STA(self):
@@ -980,32 +980,32 @@ class Olc6502():
     def TAX(self):
         self.reg_x = self.acc
 
-        self.setFlag(OLC6502_FLAG.Z, self.reg_x == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_x & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_x == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_x & 0x80)
 
         return 0
 
     def TAY(self):
         self.reg_y = self.acc
 
-        self.setFlag(OLC6502_FLAG.Z, self.reg_y == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_y & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_y == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_y & 0x80)
 
         return 0
 
     def TSX(self):
         self.reg_x = stack
 
-        self.setFlag(OLC6502_FLAG.Z, self.reg_x == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.reg_x & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.reg_x == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.reg_x & 0x80)
 
         return 0
 
     def TXA(self):
         self.acc = self.reg_x
 
-        self.setFlag(OLC6502_FLAG.Z, self.acc == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.acc & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.acc == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.acc & 0x80)
 
         return 0
 
@@ -1016,8 +1016,8 @@ class Olc6502():
     def TYA(self):
         self.acc = self.reg_y
         
-        self.setFlag(OLC6502_FLAG.Z, self.acc == 0x00)
-        self.setFlag(OLC6502_FLAG.N, self.acc & 0x80)
+        self.setFlag(CPU6502_FLAG.Z, self.acc == 0x00)
+        self.setFlag(CPU6502_FLAG.N, self.acc & 0x80)
         
         return 0
 

@@ -1,13 +1,13 @@
-import olc6502 as nes_cpu
-import olc2C02 as nes_ppu
+import cpu6502 as nes_cpu
+import ppu2C02 as nes_ppu
 import cartridge as nes_cartridge
 
 class Bus:
     # Devices on bus
-    cpu = nes_cpu.Olc6502()
+    cpu = nes_cpu.CPU6502()
     cpu_ram = [0x00] * 2048
     
-    ppu = nes_ppu.Olc2C02()
+    ppu = nes_ppu.PPU2C02()
     
     cartridge = None
 
@@ -56,7 +56,12 @@ class Bus:
         self.system_clock_counter = 0
 
     def clock(self):
-        pass
+        self.ppu.clock()
+
+        if (self.system_clock_counter % 3 == 0):        
+            self.cpu.clock()
+        
+        self.system_clock_counter += 1
 
 
 
