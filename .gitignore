@@ -1,6 +1,7 @@
 *.NES
 *.nes
 *.pyc
+*.bak
 rom_tester.py
 test.py
 main*.py

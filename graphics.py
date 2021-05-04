@@ -40,9 +40,12 @@ class Sprite():
             self.col_data[x] = Pixel(255, 0, 0)
         '''
         
-        self.col_data = [Pixel(255, 0, 0, 1)] * (width * height)
+        self.col_data = [0] * (width * height)
 
-    def getPixel(self, x, y):
+        for i in range(len(self.col_data)): 
+            self.col_data[i] = Pixel(255, 0, 0, 1)
+
+    def get_pixel(self, x, y):
         if self.mode_sample == self.MODE.NORMAL:
             if (x >= 0 and x < self.width and y >= 0 and y < self.height):
                 return self.col_data[y * self.width + x]
@@ -51,9 +54,9 @@ class Sprite():
 
         return self.col_data[abs(y % self.height) * self.width + abs(x % self.width)]
 
-    def setPixel(self, x, y, pixel):
+    def set_pixel(self, x, y, pixel):
         if (x >= 0 and x < self.width and y >= 0 and y < self.height):
-            self.col_data[y * self.width + x] = pixel
+            self.col_data[y * self.width + x] = Pixel(pixel.r, pixel.g, pixel.b, pixel.a)
 
             return True
 

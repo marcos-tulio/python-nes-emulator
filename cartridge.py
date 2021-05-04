@@ -127,3 +127,6 @@ class Cartridge():
             return True
 
         return False
+
+    def reset(self):
+        if self.mapper: self.mapper.reset()

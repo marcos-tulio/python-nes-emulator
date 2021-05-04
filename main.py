@@ -268,7 +268,7 @@ class MainFrame(QWidget):
                 fy = fys
                 
                 for j in range(self._sprite.height):
-                    pixel = self._sprite.getPixel(fx, fy)  
+                    pixel = self._sprite.get_pixel(fx, fy)  
                     color = "{}_{}_{}".format(pixel.r, pixel.g, pixel.b)
 
                     if not (color in self.colors):
@@ -323,9 +323,9 @@ def frame():
 #######################
 #       MAIN
 #######################
-cartridge = cart.Cartridge("nestest.nes")
+cartridge = cart.Cartridge("smb.nes")
 
-nes.insertCartridge(cartridge)
+nes.insert_cartridge(cartridge)
 
 mapAsm = nes.cpu.disassemble(0x0000, 0xFFFF)
 

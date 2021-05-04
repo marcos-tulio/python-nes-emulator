@@ -35,3 +35,6 @@ class Mapper000(m.Mapper):
                 return addr
 
         return None
+
+    def reset(self): pass
+        
