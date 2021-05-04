@@ -299,8 +299,8 @@ class CPU6502():
     def reset(self):
         self.addr_abs = 0xFFFC
         
-        lo = self.read(self.addr_abs + 0) & 0XFFFF
-        hi = self.read(self.addr_abs + 1) & 0XFFFF
+        lo = to_16_bits(self.read(self.addr_abs + 0))
+        hi = to_16_bits(self.read(self.addr_abs + 1))
 
         self.pcount = (hi << 8) | lo
 
@@ -1208,6 +1208,7 @@ class CPU6502():
         map_lines = {}
         line_addr = 0
 
+        
         while (addr <= nStop):
             line_addr = addr
 

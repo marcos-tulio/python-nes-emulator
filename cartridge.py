@@ -55,10 +55,8 @@ class Cartridge():
         self.mapper_id = ((self.header.mapper2 >> 4) << 4) | (self.header.mapper1 >> 4)
         
         # Mirror mode
-        if self.header.mapper1 & 0x01:
-            self.mirror = MIRROR.VERTICAL
-        else:
-            self.mirror = MIRROR.HORIZONTAL
+        if self.header.mapper1 & 0x01: self.mirror = MIRROR.VERTICAL
+        else: self.mirror = MIRROR.HORIZONTAL
 
 		# "Discover" File Format
         file_type = 1
@@ -97,7 +95,7 @@ class Cartridge():
     def cpuRead(self, addr):        
         mapped_addr = self.mapper.cpuMapRead(addr)
 
-        if mapped_addr:
+        if not (mapped_addr == None):
             return self.prg_memory[mapped_addr]
 
         return None
@@ -113,8 +111,8 @@ class Cartridge():
 
     def ppuRead(self, addr, isReadOnly = False):
         mapped_addr = self.mapper.ppuMapRead(addr)
-
-        if mapped_addr:
+        
+        if not (mapped_addr == None):     
             return self.chr_memory[mapped_addr]
 
         return None
@@ -122,7 +120,7 @@ class Cartridge():
     def ppuWrite(self, addr, data):
         mapped_addr = self.mapper.ppuMapWrite(addr)
 
-        if mapped_addr:
+        if not (mapped_addr == None):
             self.chr_memory[mapped_addr] = data
             return True
 

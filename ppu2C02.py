@@ -1,7 +1,7 @@
 from util import to_16_bits, to_8_bits
 import graphics as g
 import cartridge as c
-import numpy as n
+#import numpy as n
 
 class BitRegister():
     reg = 0x00
@@ -126,6 +126,9 @@ class PPU2C02():
     frame_complete = False
 
     def __init__(self):
+        self.tbl_palette[0x00] = 216
+        self.tbl_palette[0x01] = 217
+
         # Sprites
         self.spr_screen      =   g.Sprite(256, 240)
         self.spr_name_tbl    = [ g.Sprite(256, 240), g.Sprite(256, 240)]
@@ -193,16 +196,6 @@ class PPU2C02():
             self.ppu_data_buffer = self.ppu_read(self.ppu_address)
 
             if (self.ppu_address > 0x3F00): data = self.ppu_data_buffer
-
-            #self.ppu_address += 1
-
-            '''
-            self.ppu_data_buffer = self.ppu_read(self.vram_addr.reg)
-
-            if (self.vram_addr.reg >= 0x3F00): data = self.ppu_data_buffer
-
-            self.vram_addr.reg += (32 if self.control.increment_mode else 1)  
-            '''
         
         return data
 
@@ -256,33 +249,23 @@ class PPU2C02():
             self.ppu_write(self.ppu_address, data)
             #self.ppu_address += 1
 
+    cont = 0
+
     def ppu_read(self, addr, is_read_only = False):
         data = 0x00
         addr &= 0x3FFF
 
-        if self.cartridge.ppuRead(addr, data):
-            pass
+        ret = self.cartridge.ppuRead(addr, data)
+
+        if not(ret == None):
+            data = to_8_bits(ret)
+            self.cont += 1
 
         elif (addr >= 0x0000 and addr <= 0x1FFF):
             data = self.tbl_pattern[(addr & 0x1000) >> 12][addr & 0x0FFF]
 
         elif (addr >= 0x2000 and addr <= 0x3EFF):
-            #print("ppu_read ", hex(addr))
-            '''
-            addr &= 0x0FFF
-
-            if self.cartridge.mirror == c.MIRROR.VERTICAL:
-                if (addr >= 0x0000 and addr <= 0x03FF): data = self.tbl_name[0][addr & 0x03FF]
-                if (addr >= 0x0400 and addr <= 0x07FF): data = self.tbl_name[1][addr & 0x03FF]
-                if (addr >= 0x0800 and addr <= 0x0BFF): data = self.tbl_name[0][addr & 0x03FF]
-                if (addr >= 0x0C00 and addr <= 0x0FFF): data = self.tbl_name[1][addr & 0x03FF]
-
-            elif self.cartridge.mirror== c.MIRROR.HORIZONTAL:
-                if (addr >= 0x0000 and addr <= 0x03FF): data = self.tbl_name[0][addr & 0x03FF]
-                if (addr >= 0x0400 and addr <= 0x07FF): data = self.tbl_name[0][addr & 0x03FF]
-                if (addr >= 0x0800 and addr <= 0x0BFF): data = self.tbl_name[1][addr & 0x03FF]
-                if (addr >= 0x0C00 and addr <= 0x0FFF): data = self.tbl_name[1][addr & 0x03FF]  
-            '''
+            pass
        
         elif (addr >= 0x3F00 and addr <= 0x3FFF):
             addr &= 0x001F
@@ -295,8 +278,6 @@ class PPU2C02():
             data = self.tbl_palette[addr]
             #data = self.tbl_palette[addr] & (0x30 if self.mask.get_grayscale() else 0x3F)
 
-        #if addr > 0:
-        #    print("ppu_read: ", str(hex(addr)))
 
         return data
 
@@ -343,12 +324,8 @@ class PPU2C02():
                 nOffset = to_16_bits(nTileY * 256 + nTileX * 16)
 
                 for row in range(8):
-                    #print (hex(i * 0x1000 + nOffset + row + 0x0000))
                     tile_lsb = to_8_bits(self.ppu_read(i * 0x1000 + nOffset + row + 0x0000))
                     tile_msb = to_8_bits(self.ppu_read(i * 0x1000 + nOffset + row + 0x0008))
-
-
-                    #print(self.ppu_read(i * 0x1000 + nOffset + row + 0x0000))
 
                     for col in range(8):
                         pixel = to_8_bits((tile_lsb & 0x01) + (tile_msb & 0x01))
@@ -362,13 +339,13 @@ class PPU2C02():
                             self.get_colour_from_palette_ram(palette, pixel)
                         )
 
-                        #print(hex(self.get_colour_from_palette_ram(palette, pixel).r))
-                
         return self.spr_pattern_tbl[i]
 
     def get_colour_from_palette_ram(self, palette, pixel):
-        return self.pal_screen[self.ppu_read(0x3F00 + (palette << 2) + pixel)]
-	    #return self.pal_screen[self.ppu_read(0x3F00 + (palette << 2) + pixel) & 0x3F]
+
+        value = to_8_bits(self.ppu_read(0x3F00 + (palette << 2) + pixel))
+
+        return self.pal_screen[value & 0x3F]
 
     def connect_cartridge(self, cartridge):
         self.cartridge = cartridge
@@ -423,10 +400,10 @@ class PPU2C02():
 
                 if value == 0:
                     self.load_background_shifters()
-                    self.bg_next_tile_id = self.ppu_read(0x2000 | (self.vram_addr.reg & 0x0FFF))
+                    self.bg_next_tile_id = self.ppu_?read(0x2000 | (self.vram_addr.reg & 0x0FFF))
 
                 elif value == 2:
-                    self.bg_next_tile_attrib = self.ppu_read(
+                    self.bg_next_tile_attrib = self.ppu_?read(
                         0x23C0 | (self.vram_addr.nametable_y << 11) | (self.vram_addr.nametable_x << 10) 
                         | ((self.vram_addr.coarse_y >> 2) << 3) | (self.vram_addr.coarse_x >> 2))
             
@@ -436,11 +413,11 @@ class PPU2C02():
                     self.bg_next_tile_attrib &= 0x03
 
                 elif value == 4: 
-                    self.bg_next_tile_lsb = self.ppu_read((self.control.get_pattern_background() << 12) 
+                    self.bg_next_tile_lsb = self.ppu_?read((self.control.get_pattern_background() << 12) 
                                             + ((self.bg_next_tile_id << 4) & 0xFF) 
                                             + (self.vram_addr.fine_y) + 0)
                 elif value == 6:
-                    self.bg_next_tile_msb = self.ppu_read((self.control.get_pattern_background() << 12)
+                    self.bg_next_tile_msb = self.ppu_?read((self.control.get_pattern_background() << 12)
                                             + ((self.bg_next_tile_id << 4) & 0xFF)
                                             + (self.vram_addr.fine_y) + 8)
                 elif value == 7:
@@ -479,7 +456,7 @@ class PPU2C02():
                 #######################
 
             if (self.cycle == 338 or self.cycle == 340):
-                self.bg_next_tile_id = self.ppu_read(0x2000 | (self.vram_addr.reg & 0x0FFF))
+                self.bg_next_tile_id = self.ppu_?read(0x2000 | (self.vram_addr.reg & 0x0FFF))
 
             if (self.scanline == -1 and self.cycle >= 280 and self.cycle < 305):
                 #TransferAddressY()
@@ -519,7 +496,7 @@ class PPU2C02():
         '''
 
         fake = 0x30
-        if int((n.random.rand() * 15)) % 2: fake = 0x3F
+        #if int((n.random.rand() * 15)) % 2: fake = 0x3F
 
         self.spr_screen.set_pixel( self.cycle - 1, self.scanline, self.pal_screen[fake])
 
