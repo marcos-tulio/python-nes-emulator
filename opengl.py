@@ -8,6 +8,7 @@ from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
 import time
+from datetime import datetime
 
 import bus
 import sys
@@ -20,6 +21,10 @@ cartridge = None
 mapAsm = []
 
 show_canvas_opengl = False
+show_canvas_qt = True
+show_palettes = False
+
+rom = "nestest.nes"
 
 class WorkFrame(QtCore.QThread):
     work = QtCore.pyqtSignal()
@@ -27,9 +32,15 @@ class WorkFrame(QtCore.QThread):
     def run(self): 
         self.stop = False
 
-        while not self.stop: 
-            self.work.emit()
-            time.sleep(0.01)
+        global is_work_done
+        is_work_done = True
+
+        while not self.stop:
+            if is_work_done: 
+                is_work_done = False
+                self.work.emit()
+
+            time.sleep(.001)
 
 class WorkScreen(QtCore.QThread):
     work = QtCore.pyqtSignal(object)
@@ -45,28 +56,36 @@ class WorkScreen(QtCore.QThread):
 
         while not self.stop:
             self.canvas_opengl.refresh()
-            time.sleep(.5)
+            time.sleep(.01)
 
         self.canvas_opengl.close()
 
 class MainFrame(QWidget):
+    cont_frame = 1
+
     selected_palette = 0
 
     def do_work(self):
+        initial = datetime.now()
+        
         nes.clock()
         while not nes.ppu.frame_complete: nes.clock()
+        nes.ppu.frame_complete = False
 
-        nes.clock()
-        while not nes.cpu.complete(): nes.clock()
+        print("Proc. time: ", (datetime.now() - initial))
 
         self.refresh_cpu()
         self.refresh_code()
-        self.refresh_ram()
 
-        #for s in self.canvas_qt_pattern:
-        #    if s: s.is_repaint = False
-
+        if show_canvas_qt: self.canvas_qt.refresh(nes.ppu.spr_screen)
+        else: self.refresh_ram()
+        
         self.repaint()
+
+        global is_work_done
+        is_work_done = True
+
+    def paintEvent(self, event): print("chamou")
 
     def __init__(self):
         super().__init__()
@@ -74,6 +93,11 @@ class MainFrame(QWidget):
 
     def keyPressEvent(self, event):
         #print("Key Pressed: " + str(event.key()))
+
+        nes.controller[0] = 0x00
+
+        if event.key() == 16777235: nes.controller[0] |= 0x08 # UP
+        if event.key() == 16777237: nes.controller[0] |= 0x04 # Down
 
         if event.key() == 67:   # C
             #print(self.canvas.colors)
@@ -83,20 +107,27 @@ class MainFrame(QWidget):
             nes.clock()
             while not nes.cpu.complete(): nes.clock()
 
+
         elif event.key() == 70: # F
             nes.clock()
             while not nes.ppu.frame_complete: nes.clock()
 
             nes.clock()
             while not nes.cpu.complete(): nes.clock()
+
+            nes.ppu.frame_complete = False
+
+            #if self.cont_frame == 4: nes.ppu.enable_log = True
+            #self.cont_frame += 1
         
         elif event.key() == 80: # P
             self.selected_palette = (self.selected_palette + 1) & 0x07
 
         elif event.key() == 82: # R
-            for i in range(len(self.canvas_qt_pattern)):
-                self.canvas_qt_pattern[i].refresh(
-                    nes.ppu.get_pattern_table(i, self.selected_palette))
+            if show_palettes:
+                for i in range(len(self.canvas_qt_pattern)):
+                    self.canvas_qt_pattern[i].refresh(
+                        nes.ppu.get_pattern_table(i, self.selected_palette))
 
             self.repaint()
 
@@ -119,7 +150,9 @@ class MainFrame(QWidget):
 
         self.refresh_cpu()
         self.refresh_code()
-        self.refresh_ram()
+
+        if show_canvas_qt: self.canvas_qt.refresh(nes.ppu.spr_screen)
+        else: self.refresh_ram()
         #self.canvas.refresh()
 
     ############################################################################################
@@ -282,7 +315,7 @@ class CanvasQt(QWidget):
     colors = {}
     pen = None
 
-    def __init__(self, sprite, flip = g.Sprite.FLIP.NONE, scale = 3):
+    def __init__(self, sprite, flip = g.Sprite.FLIP.NONE, scale = 2):
         super().__init__()
         self.sprite = sprite
         self._flip = flip
@@ -330,7 +363,7 @@ class CanvasQt(QWidget):
 
                 if not (color in self.colors):
                     self.colors[color] = QColor(pixel.r, pixel.g, pixel.b)
-                    print("Nova cor adicionada: ", color)
+                    #print("Nova cor adicionada: ", color)
                 
                 #color = QColor(pixel.r, pixel.g, pixel.b)
                 
@@ -366,14 +399,6 @@ class CanvasOpenGL():
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
 
-    '''
-    def main_loop(self):
-        self.init_canvas()        
-
-        while True:
-            self.refresh()
-            time.sleep(.5)
-    '''
     def close(self):
         if glutGetWindow():
             glutDestroyWindow(glutGetWindow())	
@@ -384,8 +409,7 @@ class CanvasOpenGL():
     ############################################################################################
     #                                       Sprite
     ############################################################################################
-    def refresh(self):
-        self.draw_sprite(nes.ppu.spr_screen)
+    def refresh(self): self.draw_sprite(nes.ppu.spr_screen)
 
     def reorder_array(self, array, split = 0):
         temp = [None] * len(array)
@@ -452,32 +476,35 @@ def init_frame():
     frame = MainFrame()
     frame.setWindowTitle('Python NES Emulator by Marcos Santos')
     frame.setFont(QFont("monospace", 10))
+
+    grid = QGridLayout()
+
+    if show_canvas_qt:
+        frame.canvas_qt = frame.init_canvas_qt(nes.ppu.spr_screen, 500, 500)
+        grid.addWidget(frame.canvas_qt, 0, 0, 2, 1)
+        frame.canvas_qt.refresh(nes.ppu.spr_screen)
     
-    vbox = QGridLayout()
-    #vbox.addWidget(frame.init_canvas_qt(500, 500), 0, 0, 2, 1)
+    else: 
+        grid.addWidget(frame.init_panel_ram(), 0, 0, 2, 1)
+        frame.refresh_ram()
 
-    frame.canvas_qt_pattern = [0, 0]
+    grid.addWidget(frame.init_panel_cpu(), 0, 1, 1, 1)
+    grid.addWidget(frame.init_code(15), 1, 1)
 
-    frame.canvas_qt_pattern[0] = frame.init_canvas_qt(
-        nes.ppu.get_pattern_table(0, frame.selected_palette), 300, 300)
-
-    frame.canvas_qt_pattern[1] = frame.init_canvas_qt(
-        nes.ppu.get_pattern_table(1, frame.selected_palette), 300, 300)
-
-    vbox.addWidget(frame.init_panel_ram(), 0, 0, 2, 1)
-    vbox.addWidget(frame.init_panel_cpu(), 0, 1, 1, 1)
-    vbox.addWidget(frame.init_code(15), 1, 1)
-
-    vbox.addWidget(frame.canvas_qt_pattern[0], 0, 3, 3, 1)
-    vbox.addWidget(frame.canvas_qt_pattern[1], 1, 3, 3, 1)
-
-    frame.refresh_ram()
     frame.refresh_cpu()
     frame.refresh_code()
-    #frame.canvas_qt_pattern[0].refresh()
-    #frame.canvas_qt_pattern[1].refresh()
 
-    #frame.thread_code   = threading.Thread(target = frame.do_work)
+    if show_palettes:
+        frame.canvas_qt_pattern = [
+            frame.init_canvas_qt(nes.ppu.get_pattern_table(0, frame.selected_palette), 300, 300),
+            frame.init_canvas_qt(nes.ppu.get_pattern_table(1, frame.selected_palette), 300, 300)
+        ]
+
+        grid.addWidget(frame.canvas_qt_pattern[0], 0, 3, 3, 1)
+        grid.addWidget(frame.canvas_qt_pattern[1], 1, 3, 3, 1)
+
+        frame.canvas_qt_pattern[0].refresh(nes.ppu.get_pattern_table(0, frame.selected_palette))
+        frame.canvas_qt_pattern[1].refresh(nes.ppu.get_pattern_table(1, frame.selected_palette))
 
     frame.thread_code = WorkFrame()
     frame.thread_code.work.connect(frame.do_work)
@@ -486,7 +513,7 @@ def init_frame():
         frame.canvas_opengl = CanvasOpenGL()
         frame.thread_canvas_opengl = WorkScreen(frame.canvas_opengl)
 
-    frame.setLayout(vbox)
+    frame.setLayout(grid)
     frame.show()
 
     sys.exit(app.exec_())
@@ -494,14 +521,14 @@ def init_frame():
 #######################
 #       MAIN
 #######################
-cartridge = cart.Cartridge("nestest.nes")
+cartridge = cart.Cartridge(rom)
 
 nes.insert_cartridge(cartridge)
 
 mapAsm = nes.cpu.disassemble(0x0000, 0xFFFF)
 
 nes.reset()
-nes.cpu.stack = 0xFF
+#nes.cpu.stack = 0xFF
 
 # Init frame
 init_frame()

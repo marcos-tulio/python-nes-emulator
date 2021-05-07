@@ -34,7 +34,7 @@ class CPU6502():
         self.addr_abs    = 0x0000
         self.addr_rel    = 0x0000
         self.opcode      = 0x00
-        self.cycles      = 0
+        self.cycles      = 0x00
         self.clock_count = 0
 
         self.lookup = [
@@ -341,27 +341,29 @@ class CPU6502():
             self.cycles = 7
 
     def nmi(self):
-        self.write(0x0100 + self.stack, (self.pcount >> 8) & 0x00FF)
-        self.stack = 0xFF & (self.stack - 1)
+        self.write(0x0100 + self.stack, to_8_bits(self.pcount >> 8))
+        self.stack = to_8_bits(self.stack - 1)
 
-        self.write(0x0100 + self.stack, self.pcount & 0x00FF)
-        self.stack = 0xFF & (self.stack - 1)
+        self.write(0x0100 + self.stack, to_8_bits(self.pcount))
+        self.stack = to_8_bits(self.stack - 1)
 
         self.set_flag(CPU6502_FLAG.B, 0)
         self.set_flag(CPU6502_FLAG.U, 1)
         self.set_flag(CPU6502_FLAG.I, 1)
 
         self.write(0x0100 + self.stack, self.status)
-        self.stack = 0xFF & (self.stack - 1)
+        self.stack = to_8_bits(self.stack - 1)
 
         self.addr_abs = 0xFFFA
 
-        lo = self.read(self.addr_abs + 0) & 0XFFFF
-        hi = self.read(self.addr_abs + 1) & 0XFFFF
+        lo = to_16_bits(self.read(self.addr_abs + 0))
+        hi = to_16_bits(self.read(self.addr_abs + 1))
 
-        self.pcount = (hi << 8) | lo
+        self.pcount = to_16_bits((hi << 8) | lo)
 
         self.cycles = 8
+
+        #print("CPU_NMI")
 
     def clock(self):
         if self.cycles <= 0:
@@ -373,11 +375,11 @@ class CPU6502():
             additional_cycle1 = ((self.lookup[self.opcode].addr_mode)()) & 0XFF
             additional_cycle2 = ((self.lookup[self.opcode].operate)()) & 0XFF
             
-            self.cycles += (additional_cycle1 & additional_cycle2)
+            self.cycles += to_8_bits(additional_cycle1 & additional_cycle2)
             self.set_flag(CPU6502_FLAG.U, 1)
 
         self.clock_count += 1
-        self.cycles -= 1
+        self.cycles = to_8_bits(self.cycles - 1)
 
     def connect_bus(self, bus):
         self.bus = bus
@@ -395,7 +397,7 @@ class CPU6502():
 
         return 0
 
-    def write(self, addr, data): self.bus.cpuWrite(addr, data)
+    def write(self, addr, data): self.bus.cpuWrite(to_16_bits(addr), data)
 
     def read(self, addr, is_read_only = False): return self.bus.cpuRead(addr, is_read_only)
 
@@ -599,11 +601,11 @@ class CPU6502():
     def BCC(self):    
         if (self.get_flag(CPU6502_FLAG.C) == 0):
         
-            self.cycles += 1
+            self.cycles = to_8_bits(self.cycles + 1)
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
             
             if((self.addr_abs & 0xFF00) != (self.pcount & 0xFF00)):
-                self.cycles += 1
+                self.cycles = to_8_bits(self.cycles + 1)
             
             self.pcount = self.addr_abs
         
@@ -612,11 +614,11 @@ class CPU6502():
     def BCS(self):    
         if (self.get_flag(CPU6502_FLAG.C) == 1):
         
-            self.cycles += 1
+            self.cycles = to_8_bits(self.cycles + 1)
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
             if ((self.addr_abs & 0xFF00) != (self.pcount & 0xFF00)):
-                self.cycles += 1
+                self.cycles = to_8_bits(self.cycles + 1)
 
             self.pcount = self.addr_abs
         
@@ -631,11 +633,11 @@ class CPU6502():
     def BEQ(self): 
 
         if self.get_flag(CPU6502_FLAG.Z) == 1:        
-            self.cycles += 1
+            self.cycles = to_8_bits(self.cycles + 1)
             self.addr_abs = to_16_bits(self.pcount + self.addr_rel)
 
             if (self.addr_abs & 0xFF00) != (self.pcount & 0xFF00):
-                self.cycles += 1
+                self.cycles = to_8_bits(self.cycles + 1)
 
             self.pcount = self.addr_abs
         
@@ -654,11 +656,11 @@ class CPU6502():
     def BMI(self):    
         if (self.get_flag(CPU6502_FLAG.N) == 1):
         
-            self.cycles += 1
+            self.cycles = to_8_bits(self.cycles + 1)
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
             if ((self.addr_abs & 0xFF00) != (self.pcount & 0xFF00)):
-                self.cycles += 1
+                self.cycles = to_8_bits(self.cycles + 1)
 
             self.pcount = self.addr_abs
         
@@ -672,11 +674,11 @@ class CPU6502():
     #################################################    
     def BNE(self):    
         if self.get_flag(CPU6502_FLAG.Z) == 0:        
-            self.cycles += 1
+            self.cycles = to_8_bits(self.cycles + 1)
             self.addr_abs = to_16_bits(self.pcount + self.addr_rel)
 
             if (self.addr_abs & 0xFF00) != (self.pcount & 0xFF00):
-                self.cycles += 1
+                self.cycles = to_8_bits(self.cycles + 1)
 
             self.pcount = self.addr_abs
         
@@ -684,11 +686,11 @@ class CPU6502():
     
     def BPL(self):    
         if (self.get_flag(CPU6502_FLAG.N) == 0):        
-            self.cycles += 1
+            self.cycles = to_8_bits(self.cycles + 1)
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
             if ((self.addr_abs & 0xFF00) != (self.pcount & 0xFF00)):
-                self.cycles += 1
+                self.cycles = to_8_bits(self.cycles + 1)
 
             self.pcount = self.addr_abs
         
@@ -721,22 +723,22 @@ class CPU6502():
 
     def BVC(self):
         if (self.get_flag(CPU6502_FLAG.V) == 0):
-            self.cycles += 1
+            self.cycles = to_8_bits(self.cycles + 1)
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
             if ((self.addr_abs & 0xFF00) != (self.pcount & 0xFF00)):
-                self.cycles += 1
+                self.cycles = to_8_bits(self.cycles + 1)
 
             self.pcount = self.addr_abs
         return 0
 
     def BVS(self):
         if (self.get_flag(CPU6502_FLAG.V) == 1):
-            self.cycles += 1
+            self.cycles = to_8_bits(self.cycles + 1)
             self.addr_abs = 0xFFFF & (self.pcount + self.addr_rel)
 
             if ((self.addr_abs & 0xFF00) != (self.pcount & 0xFF00)):
-                self.cycles += 1
+                self.cycles = to_8_bits(self.cycles + 1)
 
             self.pcount = self.addr_abs
         return 0

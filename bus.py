@@ -34,9 +34,9 @@ class Bus:
         elif addr >= 0x2000 and addr <= 0x3FFF:            
             data = self.ppu.cpu_read(addr & 0x0007, is_read_only)
 
-        #elif (addr >= 0x4016 and addr <= 0x4017):
-        #    data = (self.controller_state[addr & 0x0001] & 0x80) > 0
-        #    self.controller_state[addr & 0x0001] <<= 1
+        elif (addr >= 0x4016 and addr <= 0x4017):
+            data = (self.controller_state[addr & 0x0001] & 0x80) > 0
+            self.controller_state[addr & 0x0001] <<= 1
         
         # return data in int format
         if isinstance(data, int):
@@ -62,16 +62,15 @@ class Bus:
         self.ppu.connect_cartridge(cartridge)
 
     def reset(self):
-        #self.cartridge.reset()
+        self.cartridge.reset()
         self.cpu.reset()
-        #self.ppu.reset()
+        self.ppu.reset()
         self.system_clock_counter = 0
 
     def clock(self):
         self.ppu.clock()
 
-        if (self.system_clock_counter % 3 == 0):        
-            self.cpu.clock()
+        if (self.system_clock_counter % 3 == 0): self.cpu.clock()
 
         if self.ppu.nmi:
             self.ppu.nmi = False
