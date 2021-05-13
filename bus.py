@@ -2,6 +2,8 @@ import cpu6502 as nes_cpu
 import ppu2C02 as nes_ppu
 import cartridge as nes_cartridge
 
+#import numpy as np
+
 class Bus:
     # Devices on bus
     cpu = nes_cpu.CPU6502()
@@ -42,7 +44,7 @@ class Bus:
         if isinstance(data, int):
             return data
 
-        return int(data, 16)
+        return int(data, 16) 
 
     def cpuWrite(self, addr, data):
         if self.cartridge.cpuWrite(addr, data):
@@ -77,5 +79,4 @@ class Bus:
             self.cpu.nmi()
 
         self.system_clock_counter += 1
-
 

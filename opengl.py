@@ -7,6 +7,7 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
+import threading as th
 import time
 from datetime import datetime
 
@@ -61,8 +62,6 @@ class WorkScreen(QtCore.QThread):
         self.canvas_opengl.close()
 
 class MainFrame(QWidget):
-    cont_frame = 1
-
     selected_palette = 0
 
     def do_work(self):
@@ -85,7 +84,7 @@ class MainFrame(QWidget):
         global is_work_done
         is_work_done = True
 
-    def paintEvent(self, event): print("chamou")
+    #def paintEvent(self, event): print("chamou")
 
     def __init__(self):
         super().__init__()
@@ -97,6 +96,7 @@ class MainFrame(QWidget):
         nes.controller[0] = 0x00
 
         if event.key() == 16777235: nes.controller[0] |= 0x08 # UP
+
         if event.key() == 16777237: nes.controller[0] |= 0x04 # Down
 
         if event.key() == 67:   # C
@@ -107,7 +107,6 @@ class MainFrame(QWidget):
             nes.clock()
             while not nes.cpu.complete(): nes.clock()
 
-
         elif event.key() == 70: # F
             nes.clock()
             while not nes.ppu.frame_complete: nes.clock()
@@ -116,9 +115,6 @@ class MainFrame(QWidget):
             while not nes.cpu.complete(): nes.clock()
 
             nes.ppu.frame_complete = False
-
-            #if self.cont_frame == 4: nes.ppu.enable_log = True
-            #self.cont_frame += 1
         
         elif event.key() == 80: # P
             self.selected_palette = (self.selected_palette + 1) & 0x07
@@ -132,13 +128,8 @@ class MainFrame(QWidget):
             self.repaint()
 
         elif event.key() == 84: # T
-            print(nes.ppu.tbl_palette)
-            '''
-            print("Total de Opcodes: ", len(nes.cpu.used_opcodes))
-
-            for op in sorted(nes.cpu.used_opcodes, key=nes.cpu.used_opcodes.get):
-                print(op + " " + str(nes.cpu.used_opcodes[op]))
-            '''
+            if emulator._is_running: emulator.stop()
+            else: emulator.start()
 
         elif event.key() == 32: # Space
             if self.thread_code.isRunning(): self.thread_code.stop = True
@@ -470,8 +461,41 @@ class CanvasOpenGL():
         glDrawPixels(sprite.width, sprite.height, GL_RGBA, GL_UNSIGNED_BYTE, data)
         glutSwapBuffers() 
 
+class Emulator():
+    _thread = None
+    _is_running = False 
+
+    def start(self):
+        if self._thread == None:
+            self._thread = th.Thread( target = self.loop )             
+            self._thread.start()
+
+    def stop(self): self._is_running = False
+
+    def loop(self):
+        self._is_running = True
+        
+        initial = datetime.now()
+
+        while self._is_running:
+            initial = datetime.now()
+
+            nes.clock()
+            while not nes.ppu.frame_complete: nes.clock()            
+            nes.ppu.frame_complete = False
+
+            #if  (datetime.now() - initial).total_seconds() > 1:
+            #frame.canvas_qt.refresh( nes.ppu.spr_screen )
+
+            print("Proc. time: ", (datetime.now() - initial))
+
+        print("Emulator stopped!")
+        self._thread = None
+
 def init_frame():    
     app  = QApplication(sys.argv)
+
+    global frame
 
     frame = MainFrame()
     frame.setWindowTitle('Python NES Emulator by Marcos Santos')
@@ -516,6 +540,8 @@ def init_frame():
     frame.setLayout(grid)
     frame.show()
 
+    emulator.start()
+
     sys.exit(app.exec_())
 
 #######################
@@ -528,7 +554,11 @@ nes.insert_cartridge(cartridge)
 mapAsm = nes.cpu.disassemble(0x0000, 0xFFFF)
 
 nes.reset()
-#nes.cpu.stack = 0xFF
+
+global emulator
+emulator = Emulator()
+emulator.start()
+#
 
 # Init frame
-init_frame()
+#init_frame()

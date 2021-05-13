@@ -1,7 +1,7 @@
 from util import to_16_bits, to_8_bits
 import graphics as g
 import cartridge as c
-import numpy as n
+import numpy as np
 
 class BitRegister():
     reg = 0x00
@@ -154,7 +154,7 @@ class PPU2C02():
     def __init__(self):
         # Initial random palette
         for i in range(len(self.tbl_palette)):
-            self.tbl_palette[i] = int(n.random.rand() * 100) & 0xFF
+            self.tbl_palette[i] = int(np.random.rand() * 100) & 0xFF
 
         # Sprites
         self.spr_screen      =   g.Sprite(256, 240)
