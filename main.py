@@ -323,7 +323,7 @@ def frame():
 #######################
 #       MAIN
 #######################
-cartridge = cart.Cartridge("smb.nes")
+cartridge = cart.Cartridge("nestest.nes")
 
 nes.insert_cartridge(cartridge)
 

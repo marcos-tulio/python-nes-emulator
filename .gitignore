@@ -7,4 +7,6 @@ test.py
 main*.py
 __pycache__
 __pycache__/*
+__pycache__/
 .vscode
+.tool-versions
